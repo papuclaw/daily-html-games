@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Meteoro Dodge</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#02040a;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:3;text-align:center}
+    .btn{background:#1f5;color:#000;padding:10px 16px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <div id="hud">Puntaje: <b id="score">0</b> | Record: <b id="best">0</b></div>
+  <div id="overlay"><div><div style="font-size:24px"><b>Meteoro Dodge</b></div><div>Click/Tap para mover</div><div class="btn" id="startBtn">Iniciar</div></div></div>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    let running=false; let score=0; let best=+localStorage.getItem('md_best')||0;
+    let player={x:W/2,y:H-80,r:16};
+    let meteors=[]; let stars=[]; let speed=2; let lastSpawn=0; let lastStar=0;
+
+    function reset(){score=0; speed=2; meteors=[]; stars=[]; player.x=W/2;}
+
+    function spawnMeteor(){
+      meteors.push({x:Math.random()*W,y:-20,r:12+Math.random()*10,vy:2+Math.random()*speed});
+    }
+    function spawnStar(){
+      stars.push({x:Math.random()*W,y:-20,r:8,vy:2+Math.random()*1});
+    }
+
+    function update(dt){
+      score += dt*10; speed += dt*0.2;
+      lastSpawn += dt; if(lastSpawn>0.4){spawnMeteor(); lastSpawn=0;}
+      lastStar += dt; if(lastStar>1.3){spawnStar(); lastStar=0;}
+
+      meteors.forEach(m=>m.y+=m.vy*60*dt);
+      stars.forEach(s=>s.y+=s.vy*60*dt);
+      meteors = meteors.filter(m=>m.y<H+40);
+      stars = stars.filter(s=>s.y<H+40);
+
+      // collisions
+      for(const m of meteors){
+        const dx=player.x-m.x, dy=player.y-m.y; const d=Math.hypot(dx,dy);
+        if(d < player.r+m.r){ end(); return; }
+      }
+      for(let i=stars.length-1;i>=0;i--){
+        const s=stars[i]; const d=Math.hypot(player.x-s.x, player.y-s.y);
+        if(d < player.r+s.r){ score += 20; stars.splice(i,1);} 
+      }
+    }
+
+    function draw(){
+      ctx.fillStyle='#02040a'; ctx.fillRect(0,0,W,H);
+      // player
+      ctx.fillStyle='#7ef'; ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.fill();
+      // meteors
+      meteors.forEach(m=>{ctx.fillStyle='#f55'; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill();});
+      // stars
+      stars.forEach(s=>{ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();});
+
+      scoreEl.textContent = Math.floor(score);
+      bestEl.textContent = best;
+    }
+
+    function end(){
+      running=false; if(score>best){best=Math.floor(score); localStorage.setItem('md_best',best)}
+      overlay.style.display='flex';
+      overlay.innerHTML = `<div><div style="font-size:24px"><b>Game Over</b></div><div>Score: ${Math.floor(score)}</div><div class='btn' id='restartBtn'>Reiniciar</div></div>`;
+      document.getElementById('restartBtn').onclick = ()=>{overlay.style.display='none'; reset(); running=true;};
+    }
+
+    let last=performance.now();
+    function loop(t){
+      const dt=(t-last)/1000; last=t;
+      if(running) update(dt);
+      draw(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function move(x){ player.x=Math.max(20,Math.min(W-20,x)); }
+    canvas.addEventListener('mousemove', e=>{if(running) move(e.clientX)});
+    canvas.addEventListener('touchmove', e=>{if(running) move(e.touches[0].clientX)}, {passive:true});
+    canvas.addEventListener('click', e=>{if(!running){overlay.style.display='none'; reset(); running=true;} else {move(e.clientX);}});
+
+    startBtn.onclick=()=>{overlay.style.display='none'; reset(); running=true;};
+  </script>
+</body>
+</html>
