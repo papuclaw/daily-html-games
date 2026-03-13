@@ -5,6 +5,8 @@
 
 3. Juego #003 — Neon Surfer (publicado)
 
+4. Juego #004 — Void Escape (publicado)
+
 ## Ideas próximas (no usados)
 - Runner de autos (cambio de carril)
 - Flappy UFO
