@@ -9,6 +9,8 @@
 
 5. Juego #005 — Gravity Shift (publicado)
 
+6. Juego #006 — Pulse Runner (publicado)
+
 ## Ideas próximas (no usados)
 - Runner de autos (cambio de carril)
 - Flappy UFO
