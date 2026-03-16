@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Pulse Runner</title>
+  <title>Swarm Survivor</title>
   <style>
     html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050505;color:#fff;font-family:system-ui}
     #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
@@ -13,11 +13,11 @@
   </style>
 </head>
 <body>
-  <div id="hud">Puntos: <b id="score">0</b> | Record: <b id="best">0</b></div>
+  <div id="hud">Tiempo: <b id="time">0.0</b> | Enemigos: <b id="count">0</b></div>
   <div id="overlay">
     <div>
-      <div style="font-size:28px;margin-bottom:10px"><b>Pulse Runner</b></div>
-      <div style="opacity:0.8;margin-bottom:10px">Click/Tap para cambiar GRAVEDAD</div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Swarm Survivor</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">Toca y arrastra para moverte. Sobrevive.</div>
       <div class="btn" id="startBtn">COMENZAR</div>
     </div>
   </div>
@@ -27,67 +27,93 @@
     const ctx = canvas.getContext('2d');
     const overlay = document.getElementById('overlay');
     const startBtn = document.getElementById('startBtn');
-    const scoreEl = document.getElementById('score');
-    const bestEl = document.getElementById('best');
+    const timeEl = document.getElementById('time');
+    const countEl = document.getElementById('count');
 
     let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
 
-    let running=false; let score=0; let best=+localStorage.getItem('game_006_best')||0;
-    let py=H/2, vy=0, gravity=0.6, speed=5;
-    let obstacles=[]; let lastSpawn=0;
+    let running=false, t=0;
+    let player={x:W/2,y:H/2,r:14};
+    let target={x:W/2,y:H/2};
+    let enemies=[]; let bullets=[]; let lastSpawn=0; let lastShot=0;
 
-    function reset(){score=0; py=H/2; vy=0; speed=5; obstacles=[]; gravity=0.6;}
+    function reset(){
+      t=0; enemies=[]; bullets=[]; lastSpawn=0; lastShot=0; player.x=W/2; player.y=H/2; target.x=W/2; target.y=H/2;
+    }
 
-    function spawn(){
-        const h = 60 + Math.random()*100;
-        const isTop = Math.random() < 0.5;
-        obstacles.push({x:W+50, y: isTop?0:H-h, w:40, h:h});
+    function spawnEnemy(){
+      const side=Math.floor(Math.random()*4);
+      let x,y; if(side===0){x=-20;y=Math.random()*H} else if(side===1){x=W+20;y=Math.random()*H}
+      else if(side===2){x=Math.random()*W;y=-20} else {x=Math.random()*W;y=H+20}
+      enemies.push({x,y,r:12,spd:1.2+Math.random()});
+    }
+
+    function shoot(){
+      if(!enemies.length) return;
+      // target nearest
+      let n=enemies[0], nd=1e9;
+      for(const e of enemies){ const d=(e.x-player.x)**2+(e.y-player.y)**2; if(d<nd){nd=d;n=e;} }
+      const ang=Math.atan2(n.y-player.y,n.x-player.x);
+      bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*6,vy:Math.sin(ang)*6,r:4});
     }
 
     function update(dt){
-        score += dt*5; speed += dt*0.1;
-        vy += gravity; py += vy;
-        if(py<0 || py>H) end();
+      t+=dt;
+      // move player towards target
+      player.x += (target.x-player.x)*Math.min(1,dt*6);
+      player.y += (target.y-player.y)*Math.min(1,dt*6);
 
-        lastSpawn += dt;
-        if(lastSpawn > 1.2 - Math.min(0.5, speed/50)){ spawn(); lastSpawn=0; }
+      lastSpawn+=dt; if(lastSpawn>0.7){ spawnEnemy(); lastSpawn=0; }
+      lastShot+=dt; if(lastShot>0.35){ shoot(); lastShot=0; }
 
-        for(let i=obstacles.length-1;i>=0;i--){
-            let o = obstacles[i]; o.x -= speed;
-            if(o.x < -60) obstacles.splice(i,1);
-            if(100 < o.x+o.w && 100+30 > o.x && py < o.y+o.h && py+30 > o.y) end();
+      // move enemies
+      for(const e of enemies){
+        const ang=Math.atan2(player.y-e.y,player.x-e.x);
+        e.x+=Math.cos(ang)*e.spd; e.y+=Math.sin(ang)*e.spd;
+        if((e.x-player.x)**2+(e.y-player.y)**2 < (e.r+player.r)**2){ running=false; overlay.style.display='flex'; }
+      }
+
+      // move bullets + collisions
+      for(let i=bullets.length-1;i>=0;i--){
+        const b=bullets[i]; b.x+=b.vx; b.y+=b.vy;
+        if(b.x<-20||b.x>W+20||b.y<-20||b.y>H+20){ bullets.splice(i,1); continue; }
+        for(let j=enemies.length-1;j>=0;j--){
+          const e=enemies[j];
+          if((e.x-b.x)**2+(e.y-b.y)**2 < (e.r+b.r)**2){ enemies.splice(j,1); bullets.splice(i,1); break; }
         }
+      }
     }
 
     function draw(){
-        ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
-        // Player
-        ctx.fillStyle='#1f5'; ctx.shadowBlur=15; ctx.shadowColor='#1f5';
-        ctx.fillRect(100, py, 30, 30);
-        ctx.shadowBlur=0;
-        // Obstacles
-        ctx.fillStyle='#f33';
-        obstacles.forEach(o=>ctx.fillRect(o.x,o.y,o.w,o.h));
-        scoreEl.textContent = Math.floor(score);
-        bestEl.textContent = best;
-    }
+      ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
+      // player
+      ctx.fillStyle='#1f5'; ctx.shadowBlur=12; ctx.shadowColor='#1f5';
+      ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+      // enemies
+      ctx.fillStyle='#f33';
+      for(const e of enemies){ ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill(); }
+      // bullets
+      ctx.fillStyle='#fff';
+      for(const b of bullets){ ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); }
 
-    function end(){
-        running=false; if(score>best){best=Math.floor(score); localStorage.setItem('game_006_best',best)}
-        overlay.style.display='flex';
+      timeEl.textContent = t.toFixed(1);
+      countEl.textContent = enemies.length;
     }
 
     let last=performance.now();
-    function loop(t){
-        const dt=(t-last)/1000; last=t;
-        if(running) update(dt);
-        draw(); requestAnimationFrame(loop);
+    function loop(now){
+      const dt=(now-last)/1000; last=now;
+      if(running) update(dt);
+      draw(); requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
 
-    function flip(){ gravity *= -1; vy = 0; }
-    canvas.addEventListener('mousedown', e=>{ if(running) flip(); });
-    canvas.addEventListener('touchstart', e=>{ if(running) flip(); e.preventDefault(); }, {passive:false});
+    function setTarget(x,y){ target.x=x; target.y=y; }
+    canvas.addEventListener('mousemove', e=>setTarget(e.clientX,e.clientY));
+    canvas.addEventListener('mousedown', e=>setTarget(e.clientX,e.clientY));
+    canvas.addEventListener('touchstart', e=>{ const t=e.touches[0]; setTarget(t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
+    canvas.addEventListener('touchmove', e=>{ const t=e.touches[0]; setTarget(t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
+
     startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
   </script>
 </body>
