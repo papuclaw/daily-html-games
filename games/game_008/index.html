@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Forest Drift</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b120b;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);z-index:10;text-align:center}
+    .btn{background:#1f5;color:#000;padding:12px 24px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none;display:inline-block;margin-top:10px}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <div id="hud">Distancia: <b id="dist">0</b>m | Bot: <b id="bot">0</b>m</div>
+  <div id="overlay">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Forest Drift</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">Carrera 2D contra un bot. Mover: ← → / A D</div>
+      <div class="btn" id="startBtn">COMENZAR</div>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+
+  <script src="../../engine/simple.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const distEl = document.getElementById('dist');
+    const botEl = document.getElementById('bot');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    const lanes = ()=>[W*0.3, W*0.5, W*0.7];
+    const car = { w:22, h:34 };
+
+    let running=false;
+    let player = { lane:1, y: H*0.75, speed:220, boost:0 };
+    let bot = { lane:1, y: H*0.25, speed:210 };
+    let obstacles = [];
+    let distance=0, botDistance=0, finish=1200; // meters
+    let lastSpawn=0;
+
+    function reset(){
+      player.lane=1; player.y=H*0.75; player.boost=0;
+      bot.lane=Engine.rand(0,1) > 0.5 ? 0 : 2; bot.y=H*0.25; bot.speed=210;
+      obstacles=[]; distance=0; botDistance=0; lastSpawn=0;
+    }
+
+    function spawnObstacle(){
+      const lane = Math.floor(Engine.rand(0,3));
+      obstacles.push({ lane, y: -40 });
+    }
+
+    function update(dt){
+      if(!running) return;
+
+      // input
+      if(Engine.keys['ArrowLeft']||Engine.keys['a']) player.lane = Engine.clamp(player.lane-1,0,2);
+      if(Engine.keys['ArrowRight']||Engine.keys['d']) player.lane = Engine.clamp(player.lane+1,0,2);
+
+      const speed = player.speed - (player.boost>0?40:0);
+      distance += speed*dt/2; // convert px/s to "meters" feel
+      botDistance += bot.speed*dt/2;
+
+      // obstacles move
+      lastSpawn += dt;
+      if(lastSpawn>0.9){ spawnObstacle(); lastSpawn=0; }
+      for(const o of obstacles){ o.y += speed*dt; }
+      obstacles = obstacles.filter(o=>o.y < H+60);
+
+      // collisions
+      const px = lanes()[player.lane];
+      for(const o of obstacles){
+        const ox = lanes()[o.lane];
+        if(Math.abs(o.y - player.y) < 30 && Math.abs(ox - px) < 5){
+          player.boost = 20; // slow penalty frames
+        }
+      }
+      if(player.boost>0) player.boost--;
+
+      // bot behavior
+      if(Math.random()<0.02) bot.lane = Engine.clamp(bot.lane + (Math.random()<0.5?-1:1),0,2);
+      bot.speed += Engine.rand(-2,2);
+      bot.speed = Engine.clamp(bot.speed,190,235);
+
+      // finish
+      if(distance>=finish || botDistance>=finish){
+        running=false; overlay.style.display='flex';
+        overlay.querySelector('div div').textContent = distance>botDistance ? 'Ganaste 🏁' : 'Perdiste 💥';
+      }
+    }
+
+    function draw(){
+      ctx.fillStyle='#0b120b'; ctx.fillRect(0,0,W,H);
+
+      // road
+      ctx.fillStyle='#222b22';
+      ctx.fillRect(W*0.2, 0, W*0.6, H);
+
+      // lane lines
+      ctx.strokeStyle='#2f3a2f'; ctx.lineWidth=2;
+      const laneXs = lanes();
+      for(let i=0;i<laneXs.length;i++){
+        ctx.beginPath(); ctx.moveTo(laneXs[i],0); ctx.lineTo(laneXs[i],H); ctx.stroke();
+      }
+
+      // trees (pixel blocks)
+      for(let i=0;i<12;i++){
+        const x = (i%2===0)? W*0.08 : W*0.88;
+        const y = (i*90 + (distance*2%90)) - 90;
+        ctx.fillStyle='#1f5'; ctx.fillRect(x-8,y,16,16);
+        ctx.fillStyle='#5b3a1e'; ctx.fillRect(x-3,y+16,6,12);
+      }
+
+      // obstacles
+      for(const o of obstacles){
+        const x = lanes()[o.lane];
+        ctx.fillStyle='#e74c3c';
+        ctx.fillRect(x-10, o.y-10, 20, 20);
+      }
+
+      // cars (pixel-ish)
+      const px = lanes()[player.lane];
+      ctx.fillStyle='#1f5'; ctx.fillRect(px-11, player.y-17, 22, 34);
+      ctx.fillStyle='#0b120b'; ctx.fillRect(px-5, player.y-10, 10, 14);
+
+      const bx = lanes()[bot.lane];
+      ctx.fillStyle='#f1c40f'; ctx.fillRect(bx-11, bot.y-17, 22, 34);
+      ctx.fillStyle='#0b120b'; ctx.fillRect(bx-5, bot.y-10, 10, 14);
+
+      distEl.textContent = Math.floor(distance);
+      botEl.textContent = Math.floor(botDistance);
+    }
+
+    Engine.loop(update, draw);
+
+    startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
+  </script>
+</body>
+</html>
