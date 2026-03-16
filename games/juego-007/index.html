@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Forest Quest</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b120b;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);z-index:10;text-align:center}
+    .btn{background:#1f5;color:#000;padding:12px 24px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none;display:inline-block;margin-top:10px}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <div id="hud">Vida: <b id="hp">3</b> | Enemigos: <b id="kills">0</b></div>
+  <div id="overlay">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Forest Quest</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">Top‑down. Mover: WASD / flechas. Atacar: Espacio</div>
+      <div class="btn" id="startBtn">COMENZAR</div>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const hpEl = document.getElementById('hp');
+    const killsEl = document.getElementById('kills');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    // --- Pixel art sprites (8x8 scaled)
+    const SPRITES = {
+      hero: [
+        "..GG....",
+        ".GGGG...",
+        ".GDDG...",
+        ".GGGG...",
+        "..SS....",
+        ".S..S...",
+        ".S..S...",
+        "..SS...."
+      ],
+      enemy: [
+        "..RR....",
+        ".RRRR...",
+        ".RBBR...",
+        ".RRRR...",
+        "..TT....",
+        ".T..T...",
+        ".T..T...",
+        "..TT...."
+      ],
+      tree: [
+        "..GG....",
+        ".GGGG...",
+        "GGGGGG..",
+        "GGGGGG..",
+        "..BB....",
+        "..BB....",
+        "..BB....",
+        "..BB...."
+      ],
+      sword: [
+        "...W....",
+        "...W....",
+        "...W....",
+        "...W....",
+        "...W....",
+        "..WWW...",
+        "...W....",
+        "...W...."
+      ]
+    };
+    const COLORS = {G:'#2ecc71', D:'#1abc9c', S:'#f1c40f', R:'#e74c3c', B:'#2c3e50', T:'#8e5a2b', W:'#ecf0f1'};
+
+    function drawSprite(sprite, x, y, scale){
+      for(let i=0;i<8;i++){
+        for(let j=0;j<8;j++){
+          const c = sprite[i][j];
+          if(c!=='.'){
+            ctx.fillStyle = COLORS[c];
+            ctx.fillRect(x + j*scale, y + i*scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    // Game state
+    let running=false;
+    let player={x:0,y:0,speed:2.2,dir:0,atk:0,hp:3};
+    let enemies=[]; let trees=[]; let kills=0; let lastSpawn=0;
+    const keys = {};
+
+    function reset(){
+      player.x=W/2; player.y=H/2; player.atk=0; player.hp=3; kills=0;
+      enemies=[]; trees=[]; lastSpawn=0;
+      // spawn trees
+      for(let i=0;i<12;i++){
+        trees.push({x:Math.random()*W, y:Math.random()*H});
+      }
+    }
+
+    function spawnEnemy(){
+      const side=Math.floor(Math.random()*4);
+      let x,y; if(side===0){x=-20;y=Math.random()*H} else if(side===1){x=W+20;y=Math.random()*H}
+      else if(side===2){x=Math.random()*W;y=-20} else {x=Math.random()*W;y=H+20}
+      enemies.push({x,y,spd:1.1+Math.random()*0.7});
+    }
+
+    function movePlayer(){
+      let vx=0, vy=0;
+      if(keys['ArrowUp']||keys['w']) vy-=1;
+      if(keys['ArrowDown']||keys['s']) vy+=1;
+      if(keys['ArrowLeft']||keys['a']) vx-=1;
+      if(keys['ArrowRight']||keys['d']) vx+=1;
+      if(vx||vy){
+        const len=Math.hypot(vx,vy); vx/=len; vy/=len;
+        player.x+=vx*player.speed; player.y+=vy*player.speed;
+        if(Math.abs(vx)>Math.abs(vy)) player.dir = vx>0?0:2; else player.dir = vy>0?1:3;
+      }
+      player.x=Math.max(10,Math.min(W-10,player.x));
+      player.y=Math.max(10,Math.min(H-10,player.y));
+    }
+
+    function attack(){
+      if(player.atk>0) return;
+      player.atk=10; // frames
+    }
+
+    function update(){
+      movePlayer();
+      // spawn enemies
+      lastSpawn++; if(lastSpawn>60){ spawnEnemy(); lastSpawn=0; }
+      // move enemies
+      for(const e of enemies){
+        const ang=Math.atan2(player.y-e.y, player.x-e.x);
+        e.x += Math.cos(ang)*e.spd; e.y += Math.sin(ang)*e.spd;
+        if((e.x-player.x)**2+(e.y-player.y)**2 < 16*16){
+          player.hp--; e.hit=true;
+        }
+      }
+      enemies = enemies.filter(e=>!e.hit);
+
+      // attack hitbox
+      if(player.atk>0){
+        const ax = player.x + (player.dir===0?16:player.dir===2?-24:0);
+        const ay = player.y + (player.dir===1?16:player.dir===3?-24:0);
+        for(const e of enemies){
+          if(Math.abs(e.x-ax)<16 && Math.abs(e.y-ay)<16){ e.dead=true; kills++; }
+        }
+        enemies = enemies.filter(e=>!e.dead);
+        player.atk--;
+      }
+
+      if(player.hp<=0){ running=false; overlay.style.display='flex'; }
+    }
+
+    function draw(){
+      ctx.fillStyle='#0b120b'; ctx.fillRect(0,0,W,H);
+
+      // trees
+      for(const t of trees){ drawSprite(SPRITES.tree, t.x, t.y, 4); }
+
+      // enemies
+      for(const e of enemies){ drawSprite(SPRITES.enemy, e.x-16, e.y-16, 4); }
+
+      // player
+      drawSprite(SPRITES.hero, player.x-16, player.y-16, 4);
+
+      // attack sprite
+      if(player.atk>0){
+        const sx = player.x + (player.dir===0?18:player.dir===2?-18:0);
+        const sy = player.y + (player.dir===1?18:player.dir===3?-18:0);
+        drawSprite(SPRITES.sword, sx-16, sy-16, 3);
+      }
+
+      hpEl.textContent = player.hp;
+      killsEl.textContent = kills;
+    }
+
+    function loop(){
+      if(running) update();
+      draw(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    addEventListener('keydown', e=>{ keys[e.key]=true; if(e.key===' ') attack(); });
+    addEventListener('keyup', e=>{ keys[e.key]=false; });
+
+    startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
+  </script>
+</body>
+</html>
