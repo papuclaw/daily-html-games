@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Pixel Quest Runner</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0d12;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);z-index:10;text-align:center}
+    .btn{background:#1f5;color:#000;padding:12px 24px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none;display:inline-block;margin-top:10px}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <a href="../../index.html" style="position:fixed;top:10px;right:10px;z-index:20;background:#1f5;color:#000;padding:8px 12px;border-radius:10px;font-weight:900;text-decoration:none">Lista de juegos</a>
+  <div id="hud">Vida: <b id="hp">3</b> | Enemigos: <b id="kills">0</b></div>
+  <div id="overlay">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Pixel Quest Runner</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">16‑bit platformer. Mover: ← → / A D • Saltar: Espacio</div>
+      <div class="btn" id="startBtn">COMENZAR</div>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const hpEl = document.getElementById('hp');
+    const killsEl = document.getElementById('kills');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    const TS = 24; // tile size (scaled)
+    const GRAV = 0.6;
+    const MAP_W = 220; // tiles
+    const MAP_H = 20;
+
+    const keys = {};
+    addEventListener('keydown', e=>{ keys[e.key]=true; if(e.key===' ') e.preventDefault(); });
+    addEventListener('keyup', e=>{ keys[e.key]=false; });
+
+    let running=false;
+    let map = []; let enemies = []; let kills=0;
+    let player = {x:2*TS,y:10*TS,vx:0,vy:0,w:18,h:22,hp:3,grounded:false};
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+
+    function buildMap(){
+      map = Array.from({length:MAP_H},()=>Array(MAP_W).fill(0));
+      enemies = [];
+      // ground
+      for(let x=0;x<MAP_W;x++) map[MAP_H-2][x]=1;
+
+      // fixed elements (plataformas fijas)
+      const fixed = [
+        {x:10,y:12,len:6},
+        {x:30,y:10,len:5},
+        {x:55,y:13,len:7},
+        {x:80,y:9,len:6},
+        {x:120,y:12,len:7},
+        {x:160,y:10,len:6}
+      ];
+      fixed.forEach(p=>{ for(let i=0;i<p.len;i++) map[p.y][p.x+i]=1; });
+
+      // random platforms
+      for(let i=0;i<40;i++){
+        const x = Math.floor(rand(5, MAP_W-6));
+        const y = Math.floor(rand(6, MAP_H-5));
+        const len = Math.floor(rand(3,7));
+        for(let j=0;j<len;j++) map[y][x+j]=1;
+      }
+
+      // enemies (on ground)
+      for(let i=0;i<20;i++){
+        const ex = Math.floor(rand(8, MAP_W-8))*TS;
+        const ey = (MAP_H-3)*TS;
+        enemies.push({x:ex,y:ey,vx: (Math.random()<0.5?-1:1)*0.6,alive:true});
+      }
+    }
+
+    function reset(){
+      player.x=2*TS; player.y=10*TS; player.vx=0; player.vy=0; player.hp=3; kills=0;
+      buildMap();
+    }
+
+    function solidAt(tx,ty){
+      if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W) return 0;
+      return map[ty][tx];
+    }
+
+    function collideRect(x,y,w,h){
+      const left = Math.floor(x/TS); const right = Math.floor((x+w)/TS);
+      const top = Math.floor(y/TS); const bottom = Math.floor((y+h)/TS);
+      for(let ty=top; ty<=bottom; ty++){
+        for(let tx=left; tx<=right; tx++){
+          if(solidAt(tx,ty)) return {tx,ty};
+        }
+      }
+      return null;
+    }
+
+    function update(){
+      if(!running) return;
+
+      // input
+      let ax = 0;
+      if(keys['ArrowLeft']||keys['a']) ax=-1;
+      if(keys['ArrowRight']||keys['d']) ax=1;
+      player.vx = ax*2.2;
+      if((keys[' ']||keys['ArrowUp']||keys['w']) && player.grounded){ player.vy = -8.5; player.grounded=false; }
+
+      // gravity
+      player.vy += GRAV;
+
+      // move X
+      player.x += player.vx;
+      let hit = collideRect(player.x, player.y, player.w, player.h);
+      if(hit){
+        if(player.vx>0) player.x = hit.tx*TS - player.w - 1;
+        if(player.vx<0) player.x = (hit.tx+1)*TS + 1;
+      }
+
+      // move Y
+      player.y += player.vy;
+      hit = collideRect(player.x, player.y, player.w, player.h);
+      if(hit){
+        if(player.vy>0){ player.y = hit.ty*TS - player.h - 1; player.vy=0; player.grounded=true; }
+        if(player.vy<0){ player.y = (hit.ty+1)*TS + 1; player.vy=0; }
+      } else {
+        player.grounded=false;
+      }
+
+      // enemies
+      for(const e of enemies){
+        if(!e.alive) continue;
+        e.x += e.vx;
+        // bounce at edges / blocks
+        if(solidAt(Math.floor((e.x)/TS), MAP_H-2)===0 || solidAt(Math.floor((e.x+18)/TS), MAP_H-2)===0){
+          e.vx *= -1; e.x += e.vx*2;
+        }
+        // collision with player
+        const dx = (player.x+player.w/2) - (e.x+9);
+        const dy = (player.y+player.h) - (e.y+18);
+        if(Math.abs(dx)<18 && Math.abs(dy)<18){
+          if(player.vy>0 && player.y+player.h-2 < e.y+6){
+            e.alive=false; player.vy = -6; kills++;
+          } else {
+            player.hp--; player.vx = -player.vx; if(player.hp<=0){ running=false; overlay.style.display='flex'; }
+          }
+        }
+      }
+
+      // win if reach end
+      if(player.x > (MAP_W-4)*TS){ running=false; overlay.style.display='flex'; overlay.querySelector('div div').textContent='¡Ganaste!'; }
+    }
+
+    function draw(){
+      ctx.fillStyle='#0b0d12'; ctx.fillRect(0,0,W,H);
+      const camX = Math.max(0, Math.min(player.x - W/2, MAP_W*TS - W));
+
+      // sky
+      ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,W,H);
+
+      // tiles
+      for(let y=0;y<MAP_H;y++){
+        for(let x=0;x<MAP_W;x++){
+          if(map[y][x]){
+            const px = x*TS - camX; const py = y*TS;
+            ctx.fillStyle='#2ecc71'; ctx.fillRect(px, py, TS, TS);
+            ctx.fillStyle='#27ae60'; ctx.fillRect(px+2, py+2, TS-4, TS-4);
+          }
+        }
+      }
+
+      // enemies
+      for(const e of enemies){
+        if(!e.alive) continue;
+        const ex = e.x - camX; const ey = e.y;
+        ctx.fillStyle='#e74c3c'; ctx.fillRect(ex, ey, 18, 18);
+        ctx.fillStyle='#c0392b'; ctx.fillRect(ex+3, ey+3, 12, 12);
+      }
+
+      // player
+      const px = player.x - camX; const py = player.y;
+      ctx.fillStyle='#f1c40f'; ctx.fillRect(px, py, player.w, player.h);
+      ctx.fillStyle='#d35400'; ctx.fillRect(px+4, py+6, player.w-8, player.h-10);
+
+      // flag
+      ctx.fillStyle='#fff'; ctx.fillRect(MAP_W*TS - camX - 30, (MAP_H-5)*TS, 4, 70);
+      ctx.fillStyle='#e74c3c'; ctx.fillRect(MAP_W*TS - camX - 26, (MAP_H-5)*TS, 20, 14);
+
+      hpEl.textContent = player.hp;
+      killsEl.textContent = kills;
+    }
+
+    function loop(){
+      update(); draw(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@
 6. Juego #006 — Swarm Survivor (publicado)
 7. Juego #007 — Forest Quest (publicado)
 8. Juego #008 — Forest Drift (publicado)
+9. Juego #009 — Pixel Quest Runner (publicado)
 
 ## Ideas próximas (no usados)
 - Runner de autos (cambio de carril)
