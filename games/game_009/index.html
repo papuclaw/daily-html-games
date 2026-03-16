@@ -197,6 +197,9 @@
       killsEl.textContent = kills;
     }
 
+    // build initial map so algo se vea aunque no haya iniciado
+    reset();
+
     function loop(){
       update(); draw(); requestAnimationFrame(loop);
     }
