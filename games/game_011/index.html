@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Ruin Power</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0d12;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);z-index:10;text-align:center}
+    .btn{background:#1f5;color:#000;padding:12px 24px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none;display:inline-block;margin-top:10px}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <a href="../../index.html" style="position:fixed;top:10px;right:10px;z-index:20;background:#1f5;color:#000;padding:8px 12px;border-radius:10px;font-weight:900;text-decoration:none">Lista de juegos</a>
+  <div id="hud">Poder: <b id="pow">1.0</b> | Enemigos: <b id="kills">0</b> | Mapa roto: <b id="breaks">0</b></div>
+  <div id="overlay">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Ruin Power</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">Movéte con WASD/Flechas. Tocá enemigos para derrotarlos.</div>
+      <div class="btn" id="startBtn">COMENZAR</div>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const powEl = document.getElementById('pow');
+    const killsEl = document.getElementById('kills');
+    const breaksEl = document.getElementById('breaks');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    const keys={};
+    addEventListener('keydown', e=>keys[e.key]=true);
+    addEventListener('keyup', e=>keys[e.key]=false);
+
+    const TILE=28;
+    const MAP_W=24, MAP_H=16;
+
+    let running=false;
+    let power=1.0, powerRate=0.01; // slow growth
+    let kills=0, breaks=0;
+    let player={x:2,y:2,spd:2};
+    let enemies=[];
+    let map=[]; // durability grid
+
+    function reset(){
+      power=1.0; kills=0; breaks=0; enemies=[];
+      player.x=2; player.y=2;
+      map = Array.from({length:MAP_H},(_,y)=>Array.from({length:MAP_W},(_,x)=>{
+        // border walls stronger
+        return (x===0||y===0||x===MAP_W-1||y===MAP_H-1) ? 999 : 2 + Math.floor(Math.random()*3);
+      }));
+      // carve a small safe area
+      for(let y=1;y<4;y++) for(let x=1;x<4;x++) map[y][x]=0;
+      spawnEnemy(); spawnEnemy();
+    }
+
+    function spawnEnemy(){
+      const e={x:MAP_W-3, y:MAP_H-3, spd:1+Math.random()*0.3, lvl:1};
+      enemies.push(e);
+    }
+
+    function update(){
+      if(!running) return;
+      // slow power growth
+      power += powerRate;
+
+      let vx=0,vy=0;
+      if(keys['ArrowLeft']||keys['a']) vx=-1;
+      if(keys['ArrowRight']||keys['d']) vx=1;
+      if(keys['ArrowUp']||keys['w']) vy=-1;
+      if(keys['ArrowDown']||keys['s']) vy=1;
+
+      const nx = player.x + vx*player.spd*0.05;
+      const ny = player.y + vy*player.spd*0.05;
+
+      // collisions with walls (break if power high)
+      const tx = Math.floor(nx);
+      const ty = Math.floor(ny);
+      if(map[ty] && map[ty][tx]>0){
+        // try to break
+        map[ty][tx] -= power*0.02;
+        if(map[ty][tx]<=0){ map[ty][tx]=0; breaks++; }
+      } else {
+        player.x = Math.max(1, Math.min(MAP_W-2, nx));
+        player.y = Math.max(1, Math.min(MAP_H-2, ny));
+      }
+
+      // enemies get stronger slowly
+      for(const e of enemies){
+        e.lvl += 0.002; // slow
+        const ang = Math.atan2(player.y-e.y, player.x-e.x);
+        e.x += Math.cos(ang)*e.spd*0.03; e.y += Math.sin(ang)*e.spd*0.03;
+        // if collide, defeat enemy
+        if(Math.hypot(player.x-e.x, player.y-e.y) < 0.5){
+          kills++; power += 0.2; e.x=MAP_W-3; e.y=MAP_H-3; e.lvl=1; // respawn
+        }
+      }
+
+      // spawn more enemies as time passes
+      if(enemies.length<5 && Math.random()<0.002){ spawnEnemy(); }
+
+      powEl.textContent = power.toFixed(1);
+      killsEl.textContent = kills;
+      breaksEl.textContent = breaks;
+    }
+
+    function draw(){
+      ctx.fillStyle='#0b0d12'; ctx.fillRect(0,0,W,H);
+      const ox = (W - MAP_W*TILE)/2; const oy = (H - MAP_H*TILE)/2;
+
+      // map
+      for(let y=0;y<MAP_H;y++){
+        for(let x=0;x<MAP_W;x++){
+          const d=map[y][x];
+          if(d>0 && d<900){
+            const v=Math.min(1,d/5);
+            ctx.fillStyle=`rgba(46,204,113,${0.2+v*0.8})`;
+            ctx.fillRect(ox+x*TILE, oy+y*TILE, TILE-2, TILE-2);
+          }
+        }
+      }
+
+      // player
+      ctx.fillStyle='#f1c40f';
+      ctx.fillRect(ox+player.x*TILE-8, oy+player.y*TILE-8, 16, 16);
+
+      // enemies
+      for(const e of enemies){
+        ctx.fillStyle='#e74c3c';
+        ctx.fillRect(ox+e.x*TILE-7, oy+e.y*TILE-7, 14, 14);
+      }
+    }
+
+    function loop(){ update(); draw(); requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+
+    startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
+  </script>
+</body>
+</html>
