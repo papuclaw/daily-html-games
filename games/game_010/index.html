@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Combo Builder</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;background:#0b0d12;color:#fff;font-family:system-ui;overflow:hidden}
+    #hud{position:fixed;top:10px;left:10px;z-index:2;font-weight:bold;text-shadow:1px 1px #000}
+    #panel{position:fixed;bottom:10px;left:10px;right:10px;z-index:2;display:flex;gap:8px;flex-wrap:wrap}
+    .card{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:10px;font-size:14px}
+    .btn{background:#1f5;color:#000;padding:8px 12px;border-radius:10px;font-weight:900;cursor:pointer;user-select:none}
+    .btn:active{transform:scale(.98)}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);z-index:10;text-align:center}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <a href="../../index.html" style="position:fixed;top:10px;right:10px;z-index:20;background:#1f5;color:#000;padding:8px 12px;border-radius:10px;font-weight:900;text-decoration:none">Lista de juegos</a>
+  <div id="hud">Score: <b id="score">0</b> | Combo: <b id="combo">x1</b> | Best: <b id="best">0</b></div>
+  <div id="overlay">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px"><b>Combo Builder</b></div>
+      <div style="opacity:0.8;margin-bottom:10px">Toca los orbes rápidos para encadenar combos</div>
+      <div class="btn" id="startBtn">COMENZAR</div>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+
+  <div id="panel">
+    <div class="card">Upgrade Combo (x+1) — <b id="u1">30</b> <span class="btn" id="buyCombo">Comprar</span></div>
+    <div class="card">Tiempo +1s — <b id="u2">40</b> <span class="btn" id="buyTime">Comprar</span></div>
+    <div class="card">Spawn +Rápido — <b id="u3">50</b> <span class="btn" id="buySpawn">Comprar</span></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const scoreEl = document.getElementById('score');
+    const comboEl = document.getElementById('combo');
+    const bestEl = document.getElementById('best');
+    const u1 = document.getElementById('u1');
+    const u2 = document.getElementById('u2');
+    const u3 = document.getElementById('u3');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    let running=false;
+    let score=0; let best=+localStorage.getItem('combo_best')||0;
+    let combo=1; let comboCap=5;
+    let time=30; let spawnRate=1.2; let lastSpawn=0;
+    let orbs=[]; let particles=[];
+
+    // upgrades
+    let costCombo=30, costTime=40, costSpawn=50;
+
+    function reset(){
+      score=0; combo=1; comboCap=5; time=30; spawnRate=1.2; lastSpawn=0; orbs=[]; particles=[];
+      costCombo=30; costTime=40; costSpawn=50;
+      renderUI();
+    }
+
+    function spawnOrb(){
+      const r = 18 + Math.random()*12;
+      const x = r + Math.random()*(W-2*r);
+      const y = r + Math.random()*(H-2*r);
+      const life = 1.1 + Math.random()*0.6;
+      orbs.push({x,y,r,life});
+    }
+
+    function hitOrb(i){
+      const o=orbs[i];
+      score += Math.floor(10*combo);
+      combo = Math.min(comboCap, combo+1);
+      // particles
+      for(let k=0;k<10;k++){
+        particles.push({x:o.x,y:o.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:0.5});
+      }
+      orbs.splice(i,1);
+      renderUI();
+    }
+
+    function miss(){
+      combo = 1; renderUI();
+    }
+
+    function update(dt){
+      if(!running) return;
+      time -= dt; if(time<=0){ end(); }
+      lastSpawn += dt; if(lastSpawn>spawnRate){ spawnOrb(); lastSpawn=0; }
+
+      for(let i=orbs.length-1;i>=0;i--){
+        orbs[i].life -= dt; if(orbs[i].life<=0){ orbs.splice(i,1); miss(); }
+      }
+
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i]; p.life-=dt; p.x+=p.vx; p.y+=p.vy; if(p.life<=0) particles.splice(i,1);
+      }
+
+      renderUI();
+    }
+
+    function renderUI(){
+      scoreEl.textContent = score;
+      comboEl.textContent = 'x'+combo;
+      bestEl.textContent = best;
+      u1.textContent = costCombo;
+      u2.textContent = costTime;
+      u3.textContent = costSpawn;
+    }
+
+    function draw(){
+      ctx.fillStyle='#0b0d12'; ctx.fillRect(0,0,W,H);
+
+      // time bar
+      ctx.fillStyle='#1f5'; ctx.fillRect(10,50, (W-20)*Math.max(0,time/30), 6);
+
+      // orbs
+      for(const o of orbs){
+        ctx.beginPath();
+        ctx.fillStyle='rgba(126,239,255,0.9)';
+        ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#00bcd4'; ctx.stroke();
+      }
+
+      // particles
+      for(const p of particles){
+        ctx.fillStyle='rgba(31,255,112,'+(p.life*2)+')';
+        ctx.fillRect(p.x,p.y,3,3);
+      }
+    }
+
+    function end(){
+      running=false;
+      if(score>best){ best=score; localStorage.setItem('combo_best',best); }
+      overlay.style.display='flex';
+    }
+
+    canvas.addEventListener('click', e=>{
+      if(!running) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX-rect.left)*(W/rect.width);
+      const y = (e.clientY-rect.top)*(H/rect.height);
+      for(let i=orbs.length-1;i>=0;i--){
+        const o=orbs[i];
+        if(Math.hypot(o.x-x,o.y-y) < o.r){ hitOrb(i); return; }
+      }
+      miss();
+    });
+
+    // upgrades
+    document.getElementById('buyCombo').onclick=()=>{
+      if(score>=costCombo){ score-=costCombo; comboCap++; costCombo=Math.floor(costCombo*1.4); renderUI(); }
+    };
+    document.getElementById('buyTime').onclick=()=>{
+      if(score>=costTime){ score-=costTime; time+=1; costTime=Math.floor(costTime*1.4); renderUI(); }
+    };
+    document.getElementById('buySpawn').onclick=()=>{
+      if(score>=costSpawn){ score-=costSpawn; spawnRate=Math.max(0.5, spawnRate-0.08); costSpawn=Math.floor(costSpawn*1.4); renderUI(); }
+    };
+
+    let last=performance.now();
+    function loop(t){
+      const dt=(t-last)/1000; last=t;
+      update(dt); draw(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    startBtn.onclick=()=>{ overlay.style.display='none'; reset(); running=true; };
+  </script>
+</body>
+</html>

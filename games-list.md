@@ -13,6 +13,9 @@
 11. Juego #011 — Pulse Runner (publicado)
 
 ## Ideas próximas (no usados)
+- Combo Builder (arcade + idle + upgrades)
+- Duel Sprint (carreras rápidas + bot rival + ranking local)
+- Survive & Merge (survivor + merge rápido)
 - Runner de autos (cambio de carril)
 - Flappy UFO
 - Snake Neon

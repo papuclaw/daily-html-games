@@ -22,71 +22,23 @@
     <input id="gameSearch" type="text" placeholder="Buscar juegos..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0f172a;color:#fff" />
   </div>
   <ul>
-    <li class="card">
-      <div><b>Juego #001 — Meteoro Dodge</b></div>
-      <div>Esquivá meteoros, juntá estrellas, aumenta velocidad.</div>
-      <a href="games/juego-001/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #002 — Orbital Tap</b></div>
-      <div>Cambiá de órbita para esquivar proyectiles.</div>
-      <a href="games/juego-002/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #003 — Neon Surfer</b></div>
-      <div>Desafío diario basado en tendencias actuales.</div>
-      <a href="games/juego-003/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #004 — Void Escape</b></div>
-      <div>Desafío diario basado en tendencias actuales.</div>
-      <a href="games/juego-004/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #005 — Idle Reactor</b></div>
-      <div>Idle/incremental: generá energía y mejorá el núcleo.</div>
-      <a href="games/juego-005/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #006 — Swarm Survivor</b></div>
-      <div>Survivor arena: kiteá y sobreviví a la horda.</div>
-      <a href="games/juego-006/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #007 — Forest Quest</b></div>
-      <div>Top‑down aventura con pixel art y combate simple.</div>
-      <a href="games/juego-007/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #008 — Forest Drift</b></div>
-      <div>Carrera 2D en bosque contra bot (3 carriles).</div>
-      <a href="games/game_008/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #009 — Pixel Quest Runner</b></div>
-      <div>Plataformas 16‑bit con mapa aleatorio y enemigos.</div>
-      <a href="games/game_009/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #010 — Gravity Shift</b></div>
-      <div>Invertí la gravedad para esquivar obstáculos.</div>
-      <a href="games/juego-008/">Jugar</a>
-    </li>
-    <li class="card">
-      <div><b>Juego #011 — Pulse Runner</b></div>
-      <div>Runner con cambio de gravedad en tiempo real.</div>
-      <a href="games/juego-009/">Jugar</a>
-    </li>
+    <li class="card"><div><b>Juego #001 — Meteoro Dodge</b></div><div>Esquivá meteoros, juntá estrellas, aumenta velocidad.</div><a href="games/juego-001/">Jugar</a></li>
+    <li class="card"><div><b>Juego #002 — Orbital Tap</b></div><div>Cambiá de órbita para esquivar proyectiles.</div><a href="games/juego-002/">Jugar</a></li>
+    <li class="card"><div><b>Juego #003 — Neon Surfer</b></div><div>Desafío diario basado en tendencias actuales.</div><a href="games/juego-003/">Jugar</a></li>
+    <li class="card"><div><b>Juego #004 — Void Escape</b></div><div>Desafío diario basado en tendencias actuales.</div><a href="games/juego-004/">Jugar</a></li>
+    <li class="card"><div><b>Juego #005 — Idle Reactor</b></div><div>Idle/incremental: generá energía y mejorá el núcleo.</div><a href="games/juego-005/">Jugar</a></li>
+    <li class="card"><div><b>Juego #006 — Swarm Survivor</b></div><div>Survivor arena: kiteá y sobreviví a la horda.</div><a href="games/juego-006/">Jugar</a></li>
+    <li class="card"><div><b>Juego #007 — Forest Quest</b></div><div>Top‑down aventura con pixel art y combate simple.</div><a href="games/juego-007/">Jugar</a></li>
+    <li class="card"><div><b>Juego #008 — Forest Drift</b></div><div>Carrera 2D en bosque contra bot (3 carriles).</div><a href="games/game_008/">Jugar</a></li>
+    <li class="card"><div><b>Juego #009 — Pixel Quest Runner</b></div><div>Plataformas 16‑bit con mapa aleatorio y enemigos.</div><a href="games/game_009/">Jugar</a></li>
+    <li class="card"><div><b>Juego #010 — Combo Builder</b></div><div>Arcade + idle: encadená combos y subí upgrades.</div><a href="games/game_010/">Jugar</a></li>
   </ul>
   <script>
     const input = document.getElementById('gameSearch');
     const cards = Array.from(document.querySelectorAll('li.card'));
     input.addEventListener('input', ()=>{
       const q = input.value.toLowerCase();
-      cards.forEach(c=>{
-        const txt = c.textContent.toLowerCase();
-        c.style.display = txt.includes(q) ? '' : 'none';
-      });
+      cards.forEach(c=>{ c.style.display = c.textContent.toLowerCase().includes(q) ? '' : 'none'; });
     });
   </script>
 </body>
