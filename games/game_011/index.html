@@ -117,6 +117,7 @@
 
       // map
       for(let y=0;y<MAP_H;y++){
+        if(!map[y]) continue;
         for(let x=0;x<MAP_W;x++){
           const d=map[y][x];
           if(d>0 && d<900){
@@ -137,6 +138,9 @@
         ctx.fillRect(ox+e.x*TILE-7, oy+e.y*TILE-7, 14, 14);
       }
     }
+
+    // init so no blank errors before start
+    reset();
 
     function loop(){ update(); draw(); requestAnimationFrame(loop); }
     requestAnimationFrame(loop);
