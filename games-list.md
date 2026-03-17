@@ -10,6 +10,7 @@
 8. Juego #008 — Forest Drift (publicado)
 9. Juego #009 — Pixel Quest Runner (publicado)
 10. Juego #010 — Gravity Shift (publicado)
+11. Juego #011 — Pulse Runner (publicado)
 
 ## Ideas próximas (no usados)
 - Runner de autos (cambio de carril)
