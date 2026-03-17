@@ -9,11 +9,10 @@
 7. Juego #007 — Forest Quest (publicado)
 8. Juego #008 — Forest Drift (publicado)
 9. Juego #009 — Pixel Quest Runner (publicado)
-10. Juego #010 — Gravity Shift (publicado)
-11. Juego #011 — Pulse Runner (publicado)
+10. Juego #010 — Combo Builder (publicado)
+11. Juego #011 — Ruin Power (publicado)
 
 ## Ideas próximas (no usados)
-- Combo Builder (arcade + idle + upgrades)
 - Duel Sprint (carreras rápidas + bot rival + ranking local)
 - Survive & Merge (survivor + merge rápido)
 - Runner de autos (cambio de carril)
