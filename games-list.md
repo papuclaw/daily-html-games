@@ -11,6 +11,7 @@
 9. Juego #009 — Pixel Quest Runner (publicado)
 10. Juego #010 — Combo Builder (publicado)
 11. Juego #011 — Ruin Power (publicado)
+12. Juego #012 — Gravity Shift (publicado)
 
 ## Ideas próximas (no usados)
 - Duel Sprint (carreras rápidas + bot rival + ranking local)
