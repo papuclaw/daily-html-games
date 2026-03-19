@@ -12,6 +12,7 @@
 10. Juego #010 — Combo Builder (publicado)
 11. Juego #011 — Ruin Power (publicado)
 12. Juego #012 — Gravity Shift (publicado)
+13. Juego #013 — Pulse Runner (publicado)
 
 ## Ideas próximas (no usados)
 - Duel Sprint (carreras rápidas + bot rival + ranking local)
