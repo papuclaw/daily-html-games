@@ -15,6 +15,7 @@
 13. Juego #013 — Pulse Runner (publicado)
 14. Juego #014 — Daily Challenge 20260320 (publicado)
 15. Juego #015 — Daily Challenge 20260321 (publicado)
+16. Juego #016 — Daily Challenge 20260322 (publicado)
 
 ## Ideas próximas (no usados)
 - Duel Sprint (carreras rápidas + bot rival + ranking local)
