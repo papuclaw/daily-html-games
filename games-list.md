@@ -17,6 +17,7 @@
 15. Juego #015 — Daily Challenge 20260321 (publicado)
 16. Juego #016 — Daily Challenge 20260322 (publicado)
 17. Juego #017 — Daily Challenge 20260323 (publicado)
+18. Juego #018 — Daily Challenge 20260324 (publicado)
 
 ## Ideas próximas (no usados)
 - Duel Sprint (carreras rápidas + bot rival + ranking local)
